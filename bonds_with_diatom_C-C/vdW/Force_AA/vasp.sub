@@ -1,0 +1,96 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=28  		# Requests 1 node and 8 processors per node
+#PBS -l walltime=72:00:00 	# Sets max walltime for the job to 48 hours
+#PBS -j oe			# Merge output and error files as standard output.
+cd $PBS_O_WORKDIR		# to the directory that you are submitting the job
+
+ulimit -s unlimited
+
+date
+
+
+#!/bin/bash
+
+# 指定文件夹路径
+folder="inputs/output_poscars"
+
+# 检查文件夹是否存在
+if [ ! -d "$folder" ]; then
+  echo "文件夹 $folder 不存在！"
+  exit 1
+fi
+
+# 遍历文件夹中的文件
+for file in "$folder"/*.vasp; do
+  # 跳过不存在的情况（避免没有匹配的文件时报错）
+  [ -e "$file" ] || continue
+  
+  # 获取文件名
+  filename=$(basename "$file")           # 获取文件名（去掉路径）
+  
+  # 提取 output_poscars_ 和 .vasp 之间的部分
+  value=${filename#POSCAR_}      # 删除前缀部分
+  value=${value%.vasp}                   # 删除后缀部分
+  
+  # 输出结果
+  echo "$value"
+
+mkdir $value
+cd $value
+cp ../INCAR .
+cp ../$file ./POSCAR
+
+
+
+if [ ! -f "finished" ];then
+if [ ! -f "terminated" ];then
+
+#--------------NCORE-----------------
+# Define the value of NCORE
+i=14
+# Check if NCORE exists in INCAR
+if grep -q "NCORE" INCAR; then
+    # If NCORE exists, replace the line with NCORE=$i
+    sed -i "s/^.*NCORE.*$/NCORE = $i/" INCAR
+else
+    # If NCORE doesn't exist, append NCORE=$i to the end of the file
+    echo "NCORE = $i" >> INCAR
+fi
+#------------------------------------
+
+
+#--------------KPOINTS---------------
+[[ ! -f "KPOINTS" ]] && echo -e "102\n2\n0.03\n"|vaspkit|grep "K-Mesh Size"
+#------------------------------------
+
+
+#----------------RUN-----------------
+echo "" > vasp.log
+mpirun -np 28 vasp | tee vasp.log
+#------------------------------------
+
+
+#--------------CHECK-----------------
+TailOut=$(tail -n 1 OUTCAR | awk '{print $1}')
+if grep -q "VERY BAD NEWS" vasp.log; then
+    touch terminated
+  else
+    [[ "$TailOut" = "Voluntary" ]] && touch finished || touch terminated
+fi
+#------------------------------------
+
+
+else
+echo "This job has been terminated. Check the log file and delete the file 'terminated' and submit again!"
+fi
+else
+echo "This job has been finished. Do not perform repetitively!"
+fi
+
+
+
+
+cd ..
+done
+
+date
