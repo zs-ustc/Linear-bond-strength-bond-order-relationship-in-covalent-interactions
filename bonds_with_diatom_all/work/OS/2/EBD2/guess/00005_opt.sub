@@ -1,0 +1,21 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=8  		# Requests 1 node and 8 processors per node
+#PBS -l walltime=72:00:00 	# Sets max walltime for the job to 48 hours
+#PBS -j oe			# Merge output and error files as standard output.
+
+cd $PBS_O_WORKDIR		# to the directory that you are submitting the job
+
+ulimit -s unlimited
+
+g16 < *.gjf > opt.log
+
+formchk *.chk
+
+
+#--------------CHECK-----------------
+TailOut=$(tail -n 1 *.log | awk '{print $1}')
+[[ "$TailOut" = "Normal" ]] && touch finished || touch terminated
+#------------------------------------
+
+
+

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cd 2; python ../../ebd.py 0 2 0 2;
+cd ..
+
+cd 4; python ../../ebd.py 0 3 0 3;
+cd ..
